@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Rocket Simulator — Advanced</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #03080f;
+  --s1: #081525;
+  --s2: #0c1c30;
+  --s3: #10243d;
+  --border: #162d4a;
+  --accent: #00c8f0;
+  --accent2: #ff6200;
+  --accent3: #00e87a;
+  --accent4: #c060ff;
+  --text: #b8cfe8;
+  --text-dim: #4a6a8a;
+  --text-bright: #e8f4ff;
+  --glow-c: rgba(0,200,240,0.18);
+  --glow-o: rgba(255,98,0,0.18);
+  --glow-g: rgba(0,232,122,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Rajdhani',sans-serif;
+  font-size:14px;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:44px 44px;
+  opacity:0.18;pointer-events:none;z-index:0;
+}
+
+/* ── HEADER ── */
+header{
+  position:relative;z-index:10;
+  background:var(--s1);
+  border-bottom:1px solid var(--border);
+  padding:10px 20px;
+  display:flex;align-items:center;gap:16px;
+  height:52px;flex-shrink:0;
+}
+.logo{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;letter-spacing:2px;color:var(--accent);text-shadow:0 0 18px var(--accent)}
+.logo b{color:var(--accent2)}
+.sub{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text-dim);margin-top:1px}
+.hbadge{
+  margin-left:auto;display:flex;align-items:center;gap:6px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);
+}
+.hdot{width:7px;height:7px;border-radius:50%;background:var(--accent3);box-shadow:0 0 8px var(--accent3);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── LAYOUT ── */
+.app{
+  position:relative;z-index:1;
+  display:flex;
+  height:calc(100vh - 52px);
+  overflow:hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:310px;flex-shrink:0;
+  background:var(--s1);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  display:flex;flex-direction:column;
+}
+.sidebar::-webkit-scrollbar{width:3px}
+.sidebar::-webkit-scrollbar-track{background:var(--s1)}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+.preset-bar{padding:10px 14px;border-bottom:1px solid var(--border);background:var(--s2)}
+.plabel{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+select.psel{
+  width:100%;background:var(--s3);border:1px solid var(--border);
+  color:var(--text);padding:5px 8px;border-radius:4px;
+  font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;cursor:pointer;
+}
+select.psel:hover{border-color:var(--accent)}
+
+/* sections */
+.sec{border-bottom:1px solid var(--border)}
+.sec-hdr{
+  padding:7px 14px;background:var(--s2);
+  display:flex;align-items:center;gap:7px;
+  cursor:pointer;user-select:none;transition:background .15s;
+}
+.sec-hdr:hover{background:var(--s3)}
+.sec-icon{font-size:13px}
+.sec-title{font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase}
+.sec-chev{margin-left:auto;color:var(--text-dim);font-size:9px;transition:transform .2s}
+.sec.collapsed .sec-chev{transform:rotate(-90deg)}
+.sec.collapsed .sec-body{display:none}
+.sec-body{padding:10px 14px;display:flex;flex-direction:column;gap:9px}
+
+/* params */
+.param{display:flex;flex-direction:column;gap:3px}
+.phdr{display:flex;justify-content:space-between;align-items:center}
+.plbl{font-size:11px;color:var(--text-dim);font-family:'Share Tech Mono',monospace}
+.pval{font-size:12px;font-weight:700;color:var(--accent);font-family:'Share Tech Mono',monospace;min-width:72px;text-align:right}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--s3);border-radius:2px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);cursor:pointer}
+select.pinput,input.pinput{
+  width:100%;background:var(--s3);border:1px solid var(--border);
+  color:var(--text);padding:5px 7px;border-radius:4px;
+  font-family:'Share Tech Mono',monospace;font-size:12px;outline:none;
+}
+select.pinput:focus,input.pinput:focus{border-color:var(--accent)}
+
+/* info box */
+.info-box{
+  margin:2px 0;padding:6px 8px;
+  background:rgba(0,200,240,0.06);border:1px solid rgba(0,200,240,0.15);
+  border-radius:4px;font-size:11px;color:var(--text-dim);
+  font-family:'Share Tech Mono',monospace;line-height:1.5;
+}
+.info-box span{color:var(--accent)}
+
+/* bottom buttons */
+.sim-area{padding:12px 14px;display:flex;flex-direction:column;gap:7px;margin-top:auto;border-top:1px solid var(--border)}
+.btn-sim{
+  width:100%;padding:11px;
+  background:var(--accent);color:#000;border:none;border-radius:5px;
+  font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:2px;cursor:pointer;transition:all .2s;
+  box-shadow:0 0 20px rgba(0,200,240,.3);
+}
+.btn-sim:hover{background:#33d8ff;box-shadow:0 0 30px rgba(0,200,240,.5)}
+.btn-sim:disabled{opacity:.5;cursor:not-allowed}
+.btn-sec{
+  width:100%;padding:7px;background:transparent;
+  color:var(--text-dim);border:1px solid var(--border);
+  border-radius:5px;font-family:'Rajdhani',sans-serif;font-size:12px;
+  cursor:pointer;transition:all .2s;letter-spacing:1px;
+}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── MAIN ── */
+.main{flex:1;overflow:hidden;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;flex-shrink:0}
+.mc{
+  background:var(--s1);border:1px solid var(--border);border-radius:7px;
+  padding:10px 12px;position:relative;overflow:hidden;
+}
+.mc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.mc.o::before{background:var(--accent2)}
+.mc.g::before{background:var(--accent3)}
+.mc.p::before{background:var(--accent4)}
+.mc-label{font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px}
+.mc-val{font-family:'Orbitron',sans-serif;font-size:19px;font-weight:700;color:var(--accent);line-height:1}
+.mc.o .mc-val{color:var(--accent2)}
+.mc.g .mc-val{color:var(--accent3)}
+.mc.p .mc-val{color:var(--accent4)}
+.mc-unit{font-size:10px;color:var(--text-dim);margin-top:3px;font-family:'Share Tech Mono',monospace}
+
+/* viz area */
+.viz{display:grid;grid-template-columns:330px 1fr;gap:12px;flex:1;min-height:0}
+
+/* panel */
+.panel{background:var(--s1);border:1px solid var(--border);border-radius:7px;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.ptitle{
+  padding:8px 14px;background:var(--s2);border-bottom:1px solid var(--border);
+  font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;
+  letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.pbody{flex:1;position:relative;overflow:hidden;padding:8px}
+
+/* trajectory */
+#trajCanvas{display:block;width:100%;height:100%}
+
+/* chart tabs */
+.ctabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;overflow-x:auto}
+.ctabs::-webkit-scrollbar{height:2px}
+.ctab{
+  padding:7px 12px;cursor:pointer;
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--text-dim);border-bottom:2px solid transparent;
+  transition:all .15s;white-space:nowrap;flex-shrink:0;
+}
+.ctab:hover{color:var(--text)}
+.ctab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.cpanels{flex:1;position:relative;overflow:hidden;padding:10px}
+.cpanel{display:none;position:absolute;inset:10px}
+.cpanel.active{display:block}
+
+/* advisor */
+.advisor{
+  position:absolute;bottom:8px;left:8px;right:8px;
+  background:rgba(3,8,15,.85);border:1px solid var(--border);
+  border-radius:5px;padding:7px 10px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--text-dim);line-height:1.5;display:none;
+}
+.advisor.visible{display:block}
+.adv-warn{color:#ffaa00}
+.adv-ok{color:var(--accent3)}
+.adv-tip{color:var(--accent)}
+
+/* responsive */
+@media(max-width:1100px){
+  .metrics{grid-template-columns:repeat(3,1fr)}
+  .viz{grid-template-columns:1fr}
+  .viz .panel:first-child{min-height:220px;max-height:220px}
+}
+@media(max-width:780px){
+  .app{flex-direction:column}
+  .sidebar{width:100%;height:auto;overflow-y:visible}
+  .main{height:auto;overflow-y:auto}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">H₂O<b>ROCKET</b>.SIM</div>
+    <div class="sub">Advanced Water Rocket Flight Simulator — Physics Engine v2.0</div>
+  </div>
+  <div class="hbadge"><div class="hdot"></div>SYSTEM ONLINE</div>
+</header>
+
+<div class="app">
+<!-- ════════════════ SIDEBAR ════════════════ -->
+<aside class="sidebar">
+
+  <div class="preset-bar">
+    <div class="plabel">⚡ Quick Presets</div>
+    <select class="psel" id="presetSel">
+      <option value="">— Select a preset —</option>
+      <option value="beginner">🟢 Beginner (1.5L · 6 bar)</option>
+      <option value="intermediate">🔵 Intermediate (2L · 8 bar)</option>
+      <option value="competition">🏆 Competition Optimized</option>
+      <option value="altitude">🚀 Max Altitude Attempt</option>
+      <option value="heavy">🔴 Heavy Payload Carrier</option>
+      <option value="angled">📐 Angled Launch (15°)</option>
+    </select>
+  </div>
+
+  <!-- BOTTLE -->
+  <div class="sec" id="s-bottle">
+    <div class="sec-hdr" onclick="toggleSec('s-bottle')">
+      <span class="sec-icon">🫧</span><span class="sec-title">Bottle</span><span class="sec-chev">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="param">
+        <div class="phdr"><span class="plbl">Volume</span><span class="pval" id="v-vol">1.5 L</span></div>
+        <input type="range" id="r-vol" min="0.5" max="3.0" step="0.1" value="1.5" oninput="sl('vol',this.value,'L',1)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Water Fill Ratio</span><span class="pval" id="v-fill">35 %</span></div>
+        <input type="range" id="r-fill" min="10" max="65" step="1" value="35" oninput="sl('fill',this.value,'%',0)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Gauge Pressure</span><span class="pval" id="v-pres">6.0 bar</span></div>
+        <input type="range" id="r-pres" min="1" max="14" step="0.5" value="6.0" oninput="sl('pres',this.value,'bar',1)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Air Expansion Model</span></div>
+        <select class="pinput" id="s-exp">
+          <option value="adiabatic">Adiabatic (γ = 1.4) — more accurate</option>
+          <option value="isothermal">Isothermal — simpler</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOZZLE -->
+  <div class="sec" id="s-nozzle">
+    <div class="sec-hdr" onclick="toggleSec('s-nozzle')">
+      <span class="sec-icon">🔩</span><span class="sec-title">Nozzle</span><span class="sec-chev">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="param">
+        <div class="phdr"><span class="plbl">Diameter</span><span class="pval" id="v-nozd">22.0 mm</span></div>
+        <input type="range" id="r-nozd" min="4" max="32" step="0.5" value="22" oninput="sl('nozd',this.value,'mm',1)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Discharge Coeff (Cd)</span><span class="pval" id="v-nozcd">0.98</span></div>
+        <input type="range" id="r-nozcd" min="0.60" max="1.00" step="0.01" value="0.98" oninput="sl('nozcd',this.value,'',2)">
+      </div>
+      <div class="info-box" id="noz-info">A_nozzle = <span id="noz-area">—</span> cm²</div>
+    </div>
+  </div>
+
+  <!-- AIRFRAME -->
+  <div class="sec" id="s-air">
+    <div class="sec-hdr" onclick="toggleSec('s-air')">
+      <span class="sec-icon">🚀</span><span class="sec-title">Airframe</span><span class="sec-chev">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="param">
+        <div class="phdr"><span class="plbl">Dry Mass (no water)</span><span class="pval" id="v-mass">150 g</span></div>
+        <input type="range" id="r-mass" min="40" max="700" step="5" value="150" oninput="sl('mass',this.value,'g',0)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Body Diameter</span><span class="pval" id="v-bodyd">90 mm</span></div>
+        <input type="range" id="r-bodyd" min="50" max="160" step="1" value="90" oninput="sl('bodyd',this.value,'mm',0)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Drag Coefficient (Cd)</span><span class="pval" id="v-bodycd">0.45</span></div>
+        <input type="range" id="r-bodycd" min="0.15" max="1.0" step="0.01" value="0.45" oninput="sl('bodycd',this.value,'',2)">
+      </div>
+      <div class="info-box">Total launch mass: <span id="launch-mass">—</span></div>
+    </div>
+  </div>
+
+  <!-- RECOVERY -->
+  <div class="sec" id="s-rec">
+    <div class="sec-hdr" onclick="toggleSec('s-rec')">
+      <span class="sec-icon">🪂</span><span class="sec-title">Recovery System</span><span class="sec-chev">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="param">
+        <div class="phdr"><span class="plbl">Parachute Diameter</span><span class="pval" id="v-chuted">45 cm</span></div>
+        <input type="range" id="r-chuted" min="10" max="150" step="1" value="45" oninput="sl('chuted',this.value,'cm',0)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Parachute Cd</span><span class="pval" id="v-chutecd">0.75</span></div>
+        <input type="range" id="r-chutecd" min="0.40" max="1.50" step="0.05" value="0.75" oninput="sl('chutecd',this.value,'',2)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Deployment Mode</span></div>
+        <select class="pinput" id="s-deploy">
+          <option value="apogee">At apogee (servo/barometric)</option>
+          <option value="timer2">2 s after apogee (timer)</option>
+          <option value="timer5">5 s after apogee (timer)</option>
+          <option value="alt30">Alt trigger: 30 m descending</option>
+          <option value="none">None — ballistic return</option>
+        </select>
+      </div>
+      <div class="info-box">Terminal velocity: <span id="term-vel">—</span></div>
+    </div>
+  </div>
+
+  <!-- LAUNCH & ENV -->
+  <div class="sec" id="s-env">
+    <div class="sec-hdr" onclick="toggleSec('s-env')">
+      <span class="sec-icon">🌍</span><span class="sec-title">Launch / Environment</span><span class="sec-chev">▼</span>
+    </div>
+    <div class="sec-body">
+      <div class="param">
+        <div class="phdr"><span class="plbl">Launch Angle (from vertical)</span><span class="pval" id="v-angle">0 °</span></div>
+        <input type="range" id="r-angle" min="0" max="60" step="1" value="0" oninput="sl('angle',this.value,'°',0)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Air Density ρ</span><span class="pval" id="v-rho">1.225 kg/m³</span></div>
+        <input type="range" id="r-rho" min="1.0" max="1.29" step="0.005" value="1.225" oninput="sl('rho',this.value,'kg/m³',3)">
+      </div>
+      <div class="param">
+        <div class="phdr"><span class="plbl">Gravity g</span><span class="pval" id="v-grav">9.81 m/s²</span></div>
+        <input type="range" id="r-grav" min="9.70" max="9.83" step="0.01" value="9.81" oninput="sl('grav',this.value,'m/s²',2)">
+      </div>
+    </div>
+  </div>
+
+  <!-- BUTTONS -->
+  <div class="sim-area">
+    <button class="btn-sim" id="btnSim" onclick="runSim()">▶ LAUNCH SIMULATION</button>
+    <button class="btn-sec" onclick="exportCSV()">⬇ Export Flight Data (CSV)</button>
+    <button class="btn-sec" onclick="resetAll()">↺ Reset to Defaults</button>
+  </div>
+
+</aside>
+
+<!-- ════════════════ MAIN ════════════════ -->
+<main class="main">
+
+  <div class="metrics">
+    <div class="mc">
+      <div class="mc-label">Max Altitude</div>
+      <div class="mc-val" id="m-alt">—</div>
+      <div class="mc-unit">meters</div>
+    </div>
+    <div class="mc o">
+      <div class="mc-label">Peak Velocity</div>
+      <div class="mc-val" id="m-vel">—</div>
+      <div class="mc-unit">m/s</div>
+    </div>
+    <div class="mc p">
+      <div class="mc-label">Peak Thrust</div>
+      <div class="mc-val" id="m-thr">—</div>
+      <div class="mc-unit">Newtons</div>
+    </div>
+    <div class="mc">
+      <div class="mc-label">Max Accel</div>
+      <div class="mc-val" id="m-acc">—</div>
+      <div class="mc-unit">g-force</div>
+    </div>
+    <div class="mc g">
+      <div class="mc-label">Flight Time</div>
+      <div class="mc-val" id="m-time">—</div>
+      <div class="mc-unit">seconds</div>
+    </div>
+    <div class="mc o">
+      <div class="mc-label">Landing Speed</div>
+      <div class="mc-val" id="m-land">—</div>
+      <div class="mc-unit">m/s</div>
+    </div>
+  </div>
+
+  <div class="viz">
+    <!-- TRAJECTORY -->
+    <div class="panel">
+      <div class="ptitle">📡 TRAJECTORY</div>
+      <div class="pbody" style="padding:6px">
+        <canvas id="trajCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- CHARTS -->
+    <div class="panel">
+      <div class="ctabs" id="ctabs">
+        <div class="ctab active" onclick="switchTab('altitude',this)">ALTITUDE</div>
+        <div class="ctab" onclick="switchTab('velocity',this)">VELOCITY</div>
+        <div class="ctab" onclick="switchTab('thrust',this)">THRUST</div>
+        <div class="ctab" onclick="switchTab('accel',this)">ACCELERATION</div>
+        <div class="ctab" onclick="switchTab('phases',this)">PHASES</div>
+        <div class="ctab" onclick="switchTab('energy',this)">ENERGY</div>
+      </div>
+      <div class="cpanels">
+        <div class="cpanel active" id="cp-altitude"><canvas id="ch-altitude"></canvas></div>
+        <div class="cpanel" id="cp-velocity"><canvas id="ch-velocity"></canvas></div>
+        <div class="cpanel" id="cp-thrust"><canvas id="ch-thrust"></canvas></div>
+        <div class="cpanel" id="cp-accel"><canvas id="ch-accel"></canvas></div>
+        <div class="cpanel" id="cp-phases"><canvas id="ch-phases"></canvas></div>
+        <div class="cpanel" id="cp-energy"><canvas id="ch-energy"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════ */
+const RHO_W = 1000;
+const P_ATM = 101325;
+const GAMMA = 1.4;
+
+/* ═══════════════════════════════════════════
+   UI HELPERS
+═══════════════════════════════════════════ */
+function sl(id, val, unit, dec) {
+  const el = document.getElementById('v-' + id);
+  if (el) el.textContent = parseFloat(val).toFixed(dec) + (unit ? ' ' + unit : '');
+  updateDerived();
+}
+function g(id) { return parseFloat(document.getElementById(id).value); }
+function gs(id) { return document.getElementById(id).value; }
+
+function toggleSec(id) {
+  document.getElementById(id).classList.toggle('collapsed');
+}
+
+function updateDerived() {
+  const dn = g('r-nozd') * 1e-3;
+  const an = Math.PI * (dn / 2) ** 2 * 1e4;
+  const el = document.getElementById('noz-area');
+  if (el) el.textContent = an.toFixed(4) + ' cm²';
+
+  const mDry = g('r-mass') * 1e-3;
+  const mWater = g('r-vol') * 1e-3 * g('r-fill') / 100 * RHO_W;
+  const lm = document.getElementById('launch-mass');
+  if (lm) lm.textContent = ((mDry + mWater) * 1000).toFixed(1) + ' g';
+
+  const dc = g('r-chuted') * 1e-2;
+  const ac = Math.PI * (dc / 2) ** 2;
+  const rho = g('r-rho');
+  const grav = g('r-grav');
+  const mTot = mDry + mWater;
+  const cdC = g('r-chutecd');
+  const vt = Math.sqrt((2 * mTot * grav) / (rho * cdC * ac));
+  const tv = document.getElementById('term-vel');
+  if (tv) tv.textContent = vt.toFixed(2) + ' m/s';
+}
+
+/* ═══════════════════════════════════════════
+   PRESETS
+═══════════════════════════════════════════ */
+const PRESETS = {
+  beginner:     { vol:1.5, fill:35, pres:6,  exp:'adiabatic', nozd:22, nozcd:0.98, mass:150, bodyd:90, bodycd:0.45, chuted:45, chutecd:0.75, deploy:'apogee', angle:0,  rho:1.225, grav:9.81 },
+  intermediate: { vol:2.0, fill:35, pres:8,  exp:'adiabatic', nozd:22, nozcd:0.98, mass:180, bodyd:105,bodycd:0.40, chuted:50, chutecd:0.75, deploy:'apogee', angle:0,  rho:1.225, grav:9.81 },
+  competition:  { vol:1.5, fill:40, pres:9,  exp:'adiabatic', nozd:22, nozcd:0.99, mass:120, bodyd:88, bodycd:0.28, chuted:40, chutecd:0.75, deploy:'apogee', angle:0,  rho:1.225, grav:9.81 },
+  altitude:     { vol:2.0, fill:33, pres:11, exp:'adiabatic', nozd:20, nozcd:0.98, mass:100, bodyd:82, bodycd:0.22, chuted:35, chutecd:0.75, deploy:'apogee', angle:0,  rho:1.225, grav:9.81 },
+  heavy:        { vol:3.0, fill:30, pres:8,  exp:'adiabatic', nozd:26, nozcd:0.97, mass:400, bodyd:120,bodycd:0.50, chuted:80, chutecd:0.80, deploy:'apogee', angle:0,  rho:1.225, grav:9.81 },
+  angled:       { vol:1.5, fill:35, pres:7,  exp:'adiabatic', nozd:22, nozcd:0.98, mass:160, bodyd:90, bodycd:0.45, chuted:45, chutecd:0.75, deploy:'apogee', angle:15, rho:1.225, grav:9.81 },
+};
+
+function applyPreset(name) {
+  const p = PRESETS[name]; if (!p) return;
+  const keys = ['vol','fill','pres','nozd','nozcd','mass','bodyd','bodycd','chuted','chutecd','angle','rho','grav'];
+  keys.forEach(k => {
+    const r = document.getElementById('r-' + k);
+    if (r) r.value = p[k];
+  });
+  document.getElementById('s-exp').value = p.exp;
+  document.getElementById('s-deploy').value = p.deploy;
+  // Refresh displays
+  const cfg = [
+    ['vol',p.vol,'L',1],['fill',p.fill,'%',0],['pres',p.pres,'bar',1],
+    ['nozd',p.nozd,'mm',1],['nozcd',p.nozcd,'',2],
+    ['mass',p.mass,'g',0],['bodyd',p.bodyd,'mm',0],['bodycd',p.bodycd,'',2],
+    ['chuted',p.chuted,'cm',0],['chutecd',p.chutecd,'',2],
+    ['angle',p.angle,'°',0],['rho',p.rho,'kg/m³',3],['grav',p.grav,'m/s²',2]
+  ];
+  cfg.forEach(([id,val,unit,dec]) => {
+    const el = document.getElementById('v-' + id);
+    if (el) el.textContent = parseFloat(val).toFixed(dec) + (unit ? ' ' + unit : '');
+  });
+  updateDerived();
+}
+
+document.getElementById('presetSel').addEventListener('change', function() {
+  if (this.value) { applyPreset(this.value); this.value = ''; }
+});
+
+function resetAll() {
+  applyPreset('beginner');
+  simData = null;
+  drawTraj();
+  clearMetrics();
+}
+
+function clearMetrics() {
+  ['m-alt','m-vel','m-thr','m-acc','m-time','m-land'].forEach(id => {
+    document.getElementById(id).textContent = '—';
+  });
+}
+
+/* ═══════════════════════════════════════════
+   PHYSICS ENGINE
+═══════════════════════════════════════════ */
+function getSimParams() {
+  return {
+    V:       g('r-vol')  * 1e-3,
+    fr:      g('r-fill') / 100,
+    P0abs:   P_ATM + g('r-pres') * 1e5,
+    dn:      g('r-nozd') * 1e-3,
+    Cdn:     g('r-nozcd'),
+    mDry:    g('r-mass') * 1e-3,
+    db:      g('r-bodyd')* 1e-3,
+    Cdb:     g('r-bodycd'),
+    dc:      g('r-chuted')* 1e-2,
+    Cdc:     g('r-chutecd'),
+    deploy:  gs('s-deploy'),
+    theta:   g('r-angle') * Math.PI / 180,
+    rho:     g('r-rho'),
+    grav:    g('r-grav'),
+    exp:     gs('s-exp'),
+  };
+}
+
+function forces(state, phase, p) {
+  const [x, y, vx, vy, mw] = state;
+  const An = Math.PI * (p.dn / 2) ** 2;
+  const Ab = Math.PI * (p.db / 2) ** 2;
+  const Ac = Math.PI * (p.dc / 2) ** 2;
+  const Vair0 = p.V * (1 - p.fr);
+
+  const mwCl = Math.max(0, mw);
+  const mTot = p.mDry + mwCl;
+  const v = Math.sqrt(vx * vx + vy * vy);
+
+  let Ft = 0, dmdt = 0, Pcur = P_ATM;
+
+  if (phase === 'thrust' && mwCl > 1e-9) {
+    const Vair = p.V - mwCl / RHO_W;
+    if (Vair > 0 && Vair <= p.V) {
+      Pcur = p.exp === 'adiabatic'
+        ? p.P0abs * Math.pow(Vair0 / Vair, GAMMA)
+        : p.P0abs * (Vair0 / Vair);
+      const Pg = Math.max(0, Pcur - P_ATM);
+      if (Pg > 5) {
+        const vex = p.Cdn * Math.sqrt(2 * Pg / RHO_W);
+        dmdt = -RHO_W * An * vex;
+        Ft = -dmdt * vex; // = rho*A*vex^2 = 2*Pg*An
+      }
+    }
+  }
+
+  const Cd = phase === 'descent' ? p.Cdc : p.Cdb;
+  const A  = phase === 'descent' ? Ac    : Ab;
+  const Fd = 0.5 * p.rho * v * v * Cd * A;
+
+  const ux = v > 1e-6 ? vx / v : 0;
+  const uy = v > 1e-6 ? vy / v : 1;
+
+  const Fx = Ft * Math.sin(p.theta) - Fd * ux;
+  const Fy = Ft * Math.cos(p.theta) - Fd * uy - mTot * p.grav;
+
+  return { ax: Fx / mTot, ay: Fy / mTot, dmdt, Ft, Fd, Pcur };
+}
+
+function deriv(state, phase, p) {
+  const f = forces(state, phase, p);
+  return [state[2], state[3], f.ax, f.ay, f.dmdt];
+}
+
+function rk4(state, dt, phase, p) {
+  const k1 = deriv(state, phase, p);
+  const s2 = state.map((s, i) => s + 0.5 * dt * k1[i]);
+  const k2 = deriv(s2, phase, p);
+  const s3 = state.map((s, i) => s + 0.5 * dt * k2[i]);
+  const k3 = deriv(s3, phase, p);
+  const s4 = state.map((s, i) => s + dt * k3[i]);
+  const k4 = deriv(s4, phase, p);
+  return state.map((s, i) => s + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+}
+
+function simulate(p) {
+  const mw0 = p.V * p.fr * RHO_W;
+  let state = [0, 0.001, 0, 0.001, mw0];
+  let t = 0;
+  let phase = 'thrust';
+  const dt = 0.0005; // 0.5ms
+  const LOG_DT = 0.01;
+  let nextLog = 0;
+  let prevVy = 0;
+  let apogee = false, apogeeT = 0, apogeeY = 0;
+  let deployT = null;
+  const data = [];
+  let impulse = 0;
+
+  for (let iter = 0; iter < 1200000; iter++) {
+    const [x, y, vx, vy, mw] = state;
+    const v = Math.sqrt(vx * vx + vy * vy);
+    const f = forces(state, phase, p);
+
+    // Phase: thrust → coast
+    if (phase === 'thrust' && state[4] <= 1e-9) {
+      state[4] = 0;
+      phase = 'coast';
+    }
+
+    // Phase: detect apogee
+    if (!apogee && phase !== 'thrust' && vy < 0 && prevVy >= 0) {
+      apogee = true;
+      apogeeT = t;
+      apogeeY = y;
+      if (p.deploy === 'apogee') { phase = 'descent'; deployT = t; }
+      else if (p.deploy === 'timer2') deployT = t + 2;
+      else if (p.deploy === 'timer5') deployT = t + 5;
+      // alt30: deploy on way down at 30m
+    }
+
+    // Delayed deploy
+    if (apogee && phase === 'coast') {
+      if ((p.deploy === 'timer2' || p.deploy === 'timer5') && deployT && t >= deployT) {
+        phase = 'descent'; 
+      }
+      if (p.deploy === 'alt30' && y <= 30 && y > 0) {
+        phase = 'descent'; deployT = t;
+      }
+    }
+
+    // Landing
+    if (y < -0.5 && t > 0.1) break;
+
+    // Accumulate impulse
+    impulse += f.Ft * dt;
+
+    // Log
+    if (t >= nextLog) {
+      const Ek = 0.5 * (p.mDry + Math.max(0, state[4])) * v * v;
+      const Ep = (p.mDry + Math.max(0, state[4])) * p.grav * Math.max(0, y);
+      data.push({
+        t: +t.toFixed(4),
+        x, y: Math.max(0, y), vx, vy, v,
+        ax: f.ax, ay: f.ay,
+        acc: Math.sqrt(f.ax ** 2 + f.ay ** 2),
+        Ft: f.Ft, Fd: f.Fd,
+        mw: Math.max(0, state[4]),
+        phase, Ek, Ep
+      });
+      nextLog += LOG_DT;
+    }
+
+    prevVy = vy;
+    state = rk4(state, dt, phase, p);
+    state[4] = Math.max(0, state[4]);
+    t += dt;
+  }
+
+  const maxAlt = Math.max(...data.map(d => d.y));
+  const maxVel = Math.max(...data.map(d => d.v));
+  const maxFt  = Math.max(...data.map(d => d.Ft));
+  const maxAcc = Math.max(...data.map(d => d.acc));
+  const last   = data[data.length - 1];
+  const thrustData = data.filter(d => d.Ft > 0);
+  const thrustDur  = thrustData.length > 0 ? thrustData[thrustData.length-1].t - thrustData[0].t : 0;
+
+  return {
+    data,
+    metrics: { maxAlt, maxVel, maxFt, maxAcc, landTime: last.t, landSpeed: last.v, impulse, apogeeT, apogeeY, thrustDur }
+  };
+}
+
+/* ═══════════════════════════════════════════
+   CHARTS
+═══════════════════════════════════════════ */
+const C = {
+  accent: '#00c8f0', orange: '#ff6200', green: '#00e87a', purple: '#c060ff',
+  dim: '#4a6a8a', surface: '#0c1c30', border: '#162d4a'
+};
+Chart.defaults.color = C.dim;
+Chart.defaults.borderColor = C.border;
+
+let charts = {};
+let simData = null;
+let animIdx = 0, animRaf = null;
+
+function destroyCharts() { Object.values(charts).forEach(c => c.destroy()); charts = {}; }
+
+function baseOpts(yLabel) {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: 500 },
+    scales: {
+      x: { title: { display: true, text: 'Time (s)', color: C.dim }, grid: { color: C.border }, ticks: { color: C.dim, maxTicksLimit: 10 } },
+      y: { title: { display: true, text: yLabel, color: C.dim }, grid: { color: C.border }, ticks: { color: C.dim } }
+    },
+    plugins: {
+      legend: { display: false },
+      tooltip: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, titleColor: C.accent, bodyColor: '#b8cfe8' }
+    }
+  };
+}
+
+function lineDS(data, color, label, fill=true) {
+  return { label, data, borderColor: color, backgroundColor: color + (fill?'20':'00'), borderWidth: 2, pointRadius: 0, fill, tension: 0.3 };
+}
+
+function buildCharts(data) {
+  destroyCharts();
+  const times = data.map(d => d.t.toFixed(2));
+
+  // Altitude
+  charts.altitude = new Chart(document.getElementById('ch-altitude'), {
+    type: 'line',
+    data: { labels: times, datasets: [lineDS(data.map(d => d.y.toFixed(2)), C.accent, 'Altitude')] },
+    options: baseOpts('Altitude (m)')
+  });
+
+  // Velocity
+  const vOpts = baseOpts('Velocity (m/s)');
+  vOpts.plugins.legend = { display: true, labels: { color: '#b8cfe8', boxWidth: 12 } };
+  charts.velocity = new Chart(document.getElementById('ch-velocity'), {
+    type: 'line',
+    data: {
+      labels: times,
+      datasets: [
+        { ...lineDS(data.map(d => d.v.toFixed(3)), C.accent, '|V| (m/s)'), fill: false },
+        { ...lineDS(data.map(d => d.vy.toFixed(3)), C.green, 'Vy (m/s)'), fill: false, borderDash: [5,3] },
+        { ...lineDS(data.map(d => d.vx.toFixed(3)), C.orange, 'Vx (m/s)'), fill: false, borderDash: [5,3] }
+      ]
+    },
+    options: vOpts
+  });
+
+  // Thrust
+  charts.thrust = new Chart(document.getElementById('ch-thrust'), {
+    type: 'line',
+    data: { labels: times, datasets: [lineDS(data.map(d => d.Ft.toFixed(3)), C.orange, 'Thrust (N)')] },
+    options: baseOpts('Thrust (N)')
+  });
+
+  // Acceleration
+  charts.accel = new Chart(document.getElementById('ch-accel'), {
+    type: 'line',
+    data: { labels: times, datasets: [lineDS(data.map(d => (d.acc / 9.81).toFixed(4)), C.purple, 'Accel (g)')] },
+    options: baseOpts('Acceleration (g)')
+  });
+
+  // Phases (altitude colored by phase)
+  const phColors = { thrust: C.orange, coast: C.accent, descent: C.green };
+  charts.phases = new Chart(document.getElementById('ch-phases'), {
+    type: 'line',
+    data: {
+      labels: times,
+      datasets: [
+        { label: 'Thrust Phase', data: data.map(d => d.phase === 'thrust' ? d.y : null), borderColor: C.orange, backgroundColor: C.orange + '28', borderWidth: 2.5, pointRadius: 0, fill: true, tension: 0.3, spanGaps: false },
+        { label: 'Coast Phase',  data: data.map(d => d.phase === 'coast'  ? d.y : null), borderColor: C.accent, backgroundColor: C.accent + '18', borderWidth: 2.5, pointRadius: 0, fill: true, tension: 0.3, spanGaps: false },
+        { label: 'Descent Phase',data: data.map(d => d.phase === 'descent'? d.y : null), borderColor: C.green, backgroundColor: C.green + '18', borderWidth: 2.5, pointRadius: 0, fill: true, tension: 0.3, spanGaps: false }
+      ]
+    },
+    options: { ...baseOpts('Altitude (m)'), plugins: { ...baseOpts('').plugins, legend: { display: true, labels: { color: '#b8cfe8', boxWidth: 12 } } } }
+  });
+
+  // Energy (KE + PE)
+  const eOpts = baseOpts('Energy (J)');
+  eOpts.plugins.legend = { display: true, labels: { color: '#b8cfe8', boxWidth: 12 } };
+  charts.energy = new Chart(document.getElementById('ch-energy'), {
+    type: 'line',
+    data: {
+      labels: times,
+      datasets: [
+        { ...lineDS(data.map(d => d.Ek.toFixed(2)), C.orange, 'Kinetic E (J)'), fill: false },
+        { ...lineDS(data.map(d => d.Ep.toFixed(2)), C.accent, 'Potential E (J)'), fill: false },
+        { ...lineDS(data.map(d => (d.Ek + d.Ep).toFixed(2)), C.green, 'Total E (J)'), fill: false, borderDash: [6,3] }
+      ]
+    },
+    options: eOpts
+  });
+}
+
+/* ═══════════════════════════════════════════
+   TRAJECTORY CANVAS
+═══════════════════════════════════════════ */
+function drawTraj() {
+  const canvas = document.getElementById('trajCanvas');
+  if (!canvas) return;
+  canvas.width  = canvas.offsetWidth  || 300;
+  canvas.height = canvas.offsetHeight || 280;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  if (!simData || simData.length === 0) {
+    ctx.fillStyle = C.dim;
+    ctx.font = '12px Share Tech Mono, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('▶  Run simulation', W / 2, H / 2 - 8);
+    ctx.fillText('to see trajectory', W / 2, H / 2 + 12);
+    return;
+  }
+
+  const xs = simData.map(d => d.x), ys = simData.map(d => d.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const maxY = Math.max(...ys);
+  const rangeX = Math.max(maxX - minX, maxY * 0.25, 0.1);
+
+  const pad = { t: 12, r: 8, b: 30, l: 40 };
+  const dW = W - pad.l - pad.r, dH = H - pad.t - pad.b;
+
+  const sx = dW / rangeX;
+  const sy = dH / (maxY || 1);
+  const sc = Math.min(sx, sy);
+
+  const xOff = pad.l + (dW - rangeX * sc) / 2 - minX * sc;
+  const yOff = H - pad.b;
+
+  const cx = x => xOff + x * sc;
+  const cy = y => yOff - y * sc;
+
+  // Grid lines
+  ctx.strokeStyle = C.border;
+  ctx.lineWidth = 0.5;
+  ctx.setLineDash([4, 8]);
+  const gridN = 5;
+  for (let i = 0; i <= gridN; i++) {
+    const yv = maxY * i / gridN;
+    ctx.beginPath(); ctx.moveTo(pad.l - 4, cy(yv)); ctx.lineTo(W - pad.r, cy(yv)); ctx.stroke();
+    ctx.fillStyle = C.dim; ctx.font = '9px Share Tech Mono'; ctx.textAlign = 'right';
+    ctx.fillText(yv.toFixed(0) + 'm', pad.l - 6, cy(yv) + 3);
+  }
+  ctx.setLineDash([]);
+
+  // Ground
+  ctx.strokeStyle = C.border; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, cy(0)); ctx.lineTo(W - pad.r, cy(0)); ctx.stroke();
+  ctx.fillStyle = C.border + '80';
+  ctx.fillRect(pad.l, cy(0), W - pad.l - pad.r, H - pad.b - cy(0) + pad.b);
+
+  // Trajectory
+  const phCol = { thrust: C.orange, coast: C.accent, descent: C.green };
+  const limit = Math.min(animIdx, simData.length);
+  for (let i = 1; i < limit; i++) {
+    const d0 = simData[i - 1], d1 = simData[i];
+    ctx.beginPath();
+    ctx.strokeStyle = phCol[d1.phase] || C.accent;
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = phCol[d1.phase] || C.accent;
+    ctx.moveTo(cx(d0.x), cy(d0.y));
+    ctx.lineTo(cx(d1.x), cy(d1.y));
+    ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  // Rocket dot
+  if (limit > 0) {
+    const curr = simData[Math.min(limit - 1, simData.length - 1)];
+    ctx.beginPath();
+    ctx.arc(cx(curr.x), cy(curr.y), 5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 14; ctx.shadowColor = C.accent;
+    ctx.fill(); ctx.shadowBlur = 0;
+  }
+
+  // Legend
+  [['THRUST', C.orange], ['COAST', C.accent], ['DESCENT', C.green]].forEach(([lbl, col], i) => {
+    ctx.fillStyle = col;
+    ctx.fillRect(W - 85, 10 + i * 15, 10, 3);
+    ctx.fillStyle = C.dim;
+    ctx.font = '9px Share Tech Mono'; ctx.textAlign = 'left';
+    ctx.fillText(lbl, W - 72, 13 + i * 15);
+  });
+}
+
+function animateTraj() {
+  if (animRaf) cancelAnimationFrame(animRaf);
+  animIdx = 0;
+  const speed = Math.max(1, Math.ceil(simData.length / 160));
+  function step() {
+    animIdx = Math.min(animIdx + speed, simData.length);
+    drawTraj();
+    if (animIdx < simData.length) animRaf = requestAnimationFrame(step);
+  }
+  step();
+}
+
+/* ═══════════════════════════════════════════
+   CHART TAB SWITCH
+═══════════════════════════════════════════ */
+function switchTab(name, el) {
+  document.querySelectorAll('.ctab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cpanel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const panel = document.getElementById('cp-' + name);
+  if (panel) panel.classList.add('active');
+  if (charts[name]) setTimeout(() => charts[name].resize(), 30);
+}
+
+/* ═══════════════════════════════════════════
+   RUN SIMULATION
+═══════════════════════════════════════════ */
+function runSim() {
+  const btn = document.getElementById('btnSim');
+  btn.textContent = '⏳ COMPUTING…';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    try {
+      const p = getSimParams();
+      const res = simulate(p);
+      simData = res.data;
+      const m = res.metrics;
+
+      document.getElementById('m-alt').textContent  = m.maxAlt.toFixed(1);
+      document.getElementById('m-vel').textContent  = m.maxVel.toFixed(1);
+      document.getElementById('m-thr').textContent  = m.maxFt.toFixed(1);
+      document.getElementById('m-acc').textContent  = (m.maxAcc / 9.81).toFixed(1);
+      document.getElementById('m-time').textContent = m.landTime.toFixed(1);
+      document.getElementById('m-land').textContent = m.landSpeed.toFixed(2);
+
+      buildCharts(simData);
+      animateTraj();
+
+    } catch (e) {
+      console.error(e);
+      alert('Simulation error: ' + e.message);
+    }
+    btn.textContent = '▶ LAUNCH SIMULATION';
+    btn.disabled = false;
+  }, 30);
+}
+
+/* ═══════════════════════════════════════════
+   EXPORT CSV
+═══════════════════════════════════════════ */
+function exportCSV() {
+  if (!simData || !simData.length) { alert('Run a simulation first!'); return; }
+  const hdr = 'time_s,x_m,altitude_m,vx_ms,vy_ms,speed_ms,ax_ms2,ay_ms2,accel_ms2,accel_g,thrust_N,drag_N,water_kg,KE_J,PE_J,phase';
+  const rows = simData.map(d =>
+    [d.t, d.x.toFixed(4), d.y.toFixed(4), d.vx.toFixed(4), d.vy.toFixed(4),
+     d.v.toFixed(4), d.ax.toFixed(4), d.ay.toFixed(4),
+     d.acc.toFixed(4), (d.acc/9.81).toFixed(4),
+     d.Ft.toFixed(4), d.Fd.toFixed(4), d.mw.toFixed(6),
+     d.Ek.toFixed(3), d.Ep.toFixed(3), d.phase].join(',')
+  );
+  const blob = new Blob([[hdr, ...rows].join('\n')], { type: 'text/csv' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: 'water_rocket_flight.csv' });
+  a.click();
+}
+
+/* ═══════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════ */
+window.addEventListener('resize', () => {
+  if (simData) drawTraj();
+  else drawTraj();
+  Object.values(charts).forEach(c => c.resize());
+});
+
+// Init on load
+updateDerived();
+setTimeout(drawTraj, 120);
+</script>
+</body>
+</html>
