@@ -1,0 +1,8 @@
+# obbligatori
+pyserial>=3.5
+numpy>=1.20
+
+# opzionali ma consigliati: finestra piu' fluida e salvataggio in PNG
+opencv-python>=4.5
+# alternativa a opencv per il backend tkinter
+pillow>=9.0
